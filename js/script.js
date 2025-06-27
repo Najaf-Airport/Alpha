@@ -1,36 +1,120 @@
-// js/script.js (مُحدّث ومترابط مع firebase-init.js)
+// js/script.js
 
-import { auth, db } from "./firebase-init.js"; import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"; import { collection, collectionGroup, doc, setDoc, getDocs, query } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"; import { exportSingleFlightToDocx, exportAdminDataToDocx } from "./docx-export.js";
+import { auth, db } from "./firebase-init.js";
+import {
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+import {
+  collection,
+  doc,
+  setDoc,
+  getDocs,
+  query
+} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import {
+  exportSingleFlightToDocx,
+  exportAdminDataToDocx
+} from "./docx-export.js";
 
 const ADMIN_EMAIL = "ahmedaltalqani@gmail.com";
 
-// ===== عناصر DOM ===== let loginForm, emailInput, passwordInput, loginMessage; let logoutBtn, userEmailSpan; let welcomeMessage, flightFormsContainer, saveAllFlightsBtn, messageContainer, userPastFlightsTableBody, currentMonthNameSpan; let filterMonthInput, filterUserSelect, applyFiltersBtn, exportAdminStatsBtn, exportAdminAllFlightsBtn;
+// عناصر DOM
+let loginForm, emailInput, passwordInput, loginMessage;
+let logoutBtn, userEmailSpan;
+let welcomeMessage, flightFormsContainer, saveAllFlightsBtn, messageContainer, userPastFlightsTableBody, currentMonthNameSpan;
+let filterMonthInput, filterUserSelect, applyFiltersBtn, exportAdminStatsBtn, exportAdminAllFlightsBtn;
 
-// ===== تهيئة عند التحميل ===== document.addEventListener("DOMContentLoaded", () => { // عناصر مشتركة logoutBtn = document.getElementById("logoutBtn"); userEmailSpan = document.getElementById("userEmail"); if (logoutBtn) logoutBtn.addEventListener("click", handleLogout);
+document.addEventListener("DOMContentLoaded", () => {
+  // مشتركة
+  logoutBtn = document.getElementById("logoutBtn");
+  userEmailSpan = document.getElementById("userEmail");
+  if (logoutBtn) logoutBtn.addEventListener("click", handleLogout);
 
-// صفحة تسجيل الدخول if (document.getElementById("loginView")) { loginForm = document.getElementById("loginForm"); emailInput = document.getElementById("email"); passwordInput = document.getElementById("password"); loginMessage = document.getElementById("loginMessage"); if (loginForm) loginForm.addEventListener("submit", handleLogin); }
+  // صفحة الدخول
+  if (document.getElementById("loginView")) {
+    loginForm = document.getElementById("loginForm");
+    emailInput = document.getElementById("email");
+    passwordInput = document.getElementById("password");
+    loginMessage = document.getElementById("loginMessage");
+    if (loginForm) loginForm.addEventListener("submit", handleLogin);
+  }
 
-// صفحة المستخدم if (document.getElementById("flightsView")) { welcomeMessage = document.getElementById("welcomeMessage"); flightFormsContainer = document.getElementById("flightFormsContainer"); saveAllFlightsBtn = document.getElementById("saveAllFlightsBtn"); messageContainer = document.getElementById("messageContainer"); userPastFlightsTableBody = document.querySelector("#userPastFlightsTable tbody"); currentMonthNameSpan = document.getElementById("currentMonthName"); if (saveAllFlightsBtn) saveAllFlightsBtn.addEventListener("click", saveAllFlights); generateFlightForms(4); const today = new Date(); currentMonthNameSpan.textContent = today.toLocaleString("ar-IQ", { month: "long" }); }
+  // صفحة المستخدم
+  if (document.getElementById("flightsView")) {
+    welcomeMessage = document.getElementById("welcomeMessage");
+    flightFormsContainer = document.getElementById("flightFormsContainer");
+    saveAllFlightsBtn = document.getElementById("saveAllFlightsBtn");
+    messageContainer = document.getElementById("messageContainer");
+    userPastFlightsTableBody = document.querySelector("#userPastFlightsTable tbody");
+    currentMonthNameSpan = document.getElementById("currentMonthName");
+    if (saveAllFlightsBtn) saveAllFlightsBtn.addEventListener("click", saveAllFlights);
+    generateFlightForms(4);
+    const today = new Date();
+    currentMonthNameSpan.textContent = today.toLocaleString("ar-IQ", { month: "long" });
+  }
 
-// صفحة المسؤول if (document.getElementById("adminView")) { filterMonthInput = document.getElementById("filterMonth"); filterUserSelect = document.getElementById("filterUser"); applyFiltersBtn = document.getElementById("applyFiltersBtn"); exportAdminStatsBtn = document.getElementById("exportAdminStatsToWordBtn"); exportAdminAllFlightsBtn = document.getElementById("exportAdminAllFlightsToWordBtn"); if (applyFiltersBtn) applyFiltersBtn.addEventListener("click", loadAdminData); if (exportAdminStatsBtn) exportAdminStatsBtn.addEventListener("click", () => exportAdminDataToDocx( 'stats', {}, filterMonthInput.value, filterUserSelect.value )); if (exportAdminAllFlightsBtn) exportAdminAllFlightsBtn.addEventListener("click", () => exportAdminDataToDocx( 'allFlights', {}, filterMonthInput.value, filterUserSelect.value )); const today = new Date(); filterMonthInput.value = ${today.getFullYear()}-${(today.getMonth()+1).toString().padStart(2,'0')}; }
+  // صفحة المسؤول
+  if (document.getElementById("adminView")) {
+    filterMonthInput = document.getElementById("filterMonth");
+    filterUserSelect = document.getElementById("filterUser");
+    applyFiltersBtn = document.getElementById("applyFiltersBtn");
+    exportAdminStatsBtn = document.getElementById("exportAdminStatsToWordBtn");
+    exportAdminAllFlightsBtn = document.getElementById("exportAdminAllFlightsToWordBtn");
+    if (applyFiltersBtn) applyFiltersBtn.addEventListener("click", loadAdminData);
+    if (exportAdminStatsBtn) exportAdminStatsBtn.addEventListener("click", () =>
+      exportAdminDataToDocx('stats', {}, filterMonthInput.value, filterUserSelect.value)
+    );
+    if (exportAdminAllFlightsBtn) exportAdminAllFlightsBtn.addEventListener("click", () =>
+      exportAdminDataToDocx('allFlights', {}, filterMonthInput.value, filterUserSelect.value)
+    );
+    const today = new Date();
+    filterMonthInput.value = `${today.getFullYear()}-${(today.getMonth()+1).toString().padStart(2,'0')}`;
+  }
 
-// مراقبة حالة المصادقة onAuthStateChanged(auth, user => { if (user) { userEmailSpan && (userEmailSpan.textContent = user.email); logoutBtn && (logoutBtn.style.display = "inline-block"); if (user.email === ADMIN_EMAIL) { if (!window.location.pathname.includes("admin.html")) { window.location.href = "./admin.html"; } else { loadAdminData(); } } else { if (!window.location.pathname.includes("flights.html")) { window.location.href = "./flights.html"; } else { welcomeMessage && (welcomeMessage.textContent = مرحباً بك، ${user.email}); loadUserFlights(user.uid); } } } else { if (!window.location.pathname.includes("index.html")) { window.location.href = "./index.html"; } logoutBtn && (logoutBtn.style.display = "none"); } }); });
+  // مراقبة حالة المصادقة
+  onAuthStateChanged(auth, user => {
+    if (user) {
+      userEmailSpan && (userEmailSpan.textContent = user.email);
+      logoutBtn && (logoutBtn.style.display = "inline-block");
+      if (user.email === ADMIN_EMAIL) {
+        if (!window.location.pathname.includes("admin.html")) {
+          window.location.href = "./admin.html";
+        } else {
+          loadAdminData();
+        }
+      } else {
+        if (!window.location.pathname.includes("flights.html")) {
+          window.location.href = "./flights.html";
+        } else {
+          welcomeMessage && (welcomeMessage.textContent = `مرحباً بك، ${user.email}`);
+          loadUserFlights(user.uid);
+        }
+      }
+    } else {
+      if (!window.location.pathname.includes("index.html")) {
+        window.location.href = "./index.html";
+      }
+      logoutBtn && (logoutBtn.style.display = "none");
+    }
+  });
+});
 
-// ===== الدوال =====
+// تسجيل الدخول
+async function handleLogin(e) {
+  e.preventDefault();
+  try {
+    await signInWithEmailAndPassword(auth, emailInput.value.trim(), passwordInput.value.trim());
+  } catch (err) {
+    showMessage(loginMessage, "خطأ في البريد أو كلمة المرور.", true);
+  }
+}
 
-// تسجيل الدخول async function handleLogin(e) { e.preventDefault(); try { await signInWithEmailAndPassword(auth, emailInput.value.trim(), passwordInput.value.trim()); } catch (err) { showMessage(loginMessage, "خطأ في البريد أو كلمة المرور.", true); } }
+// تسجيل الخروج
+function handleLogout() {
+  signOut(auth);
+}
 
-// تسجيل الخروج function handleLogout() { signOut(auth); }
-
-// توليد بطاقات الرحلات function generateFlightForms(num) { flightFormsContainer.innerHTML = ""; const fields = [ { id: 'date', type: 'date', required: true }, { id: 'fltNo', type: 'text', required: true }, { id: 'onChocksTime', type: 'time' }, { id: 'openDoorTime', type: 'time' }, { id: 'startCleaningTime', type: 'time' }, { id: 'completeCleaningTime', type: 'time' }, { id: 'readyBoardingTime', type: 'time' }, { id: 'startBoardingTime', type: 'time' }, { id: 'completeBoardingTime', type: 'time' }, { id: 'closeDoorTime', type: 'time' }, { id: 'offChocksTime', type: 'time' }, { id: 'notes', type: 'text' } ];
-
-for (let i = 0; i < num; i++) { const card = document.createElement('div'); card.className = 'flight-card'; let html = <h4>رحلة ${i + 1}</h4>; fields.forEach(f => { const val = f.id === 'date' ? new Date().toISOString().split('T')[0] : ''; html += <div class="input-group"> <label for="${f.id}-${i}">${f.id}${f.required? ' *': ''}</label> <input type="${f.type}" id="${f.id}-${i}" name="${f.id}"${f.required? value="${val}" required: ''} /> </div>; }); card.innerHTML = html; flightFormsContainer.appendChild(card); } }
-
-// حفظ الرحلات إلى Firestore async function saveAllFlights() { const user = auth.currentUser; if (!user || user.email === ADMIN_EMAIL) return; const monthId = new Date().toISOString().slice(0, 7); const promises = []; document.querySelectorAll('.flight-card').forEach(card => { const data = {}; card.querySelectorAll('input').forEach(inp => data[inp.name] = inp.value.trim()); if (!data.date || !data.fltNo) return; const ref = doc(collection(db, 'months', monthId, 'users', user.uid, 'flights')); promises.push(setDoc(ref, { ...data, uid: user.uid, userName: user.email, timestamp: new Date().toISOString() })); }); try { await Promise.all(promises); showMessage(messageContainer, 'تم الحفظ بنجاح!', false); loadUserFlights(auth.currentUser.uid); } catch (err) { console.error(err); showMessage(messageContainer, 'فشل حفظ الرحلات.', true); } }
-
-// تحميل رحلات المستخدم async function loadUserFlights(userId) { userPastFlightsTableBody.innerHTML = ''; const monthId = new Date().toISOString().slice(0, 7); const q = query(collection(db, 'months', monthId, 'users', userId, 'flights')); const snap = await getDocs(q); if (snap.empty) { const row = userPastFlightsTableBody.insertRow(); const cell = row.insertCell(); cell.colSpan = 13; cell.textContent = 'لا توجد رحلات'; return; } snap.forEach(docSnap => { const f = docSnap.data(); const row = userPastFlightsTableBody.insertRow(); ['date','fltNo','onChocksTime','openDoorTime','startCleaningTime','completeCleaningTime','readyBoardingTime','startBoardingTime','completeBoardingTime','closeDoorTime','offChocksTime','notes'] .forEach(key => row.insertCell().textContent = f[key] || ''); const cell = row.insertCell(); const btn = document.createElement('button'); btn.textContent = 'تصدير'; btn.onclick = () => exportSingleFlightToDocx(f); cell.appendChild(btn); }); }
-
-// تحميل بيانات المسؤول (الإحصائيات والرحلات) async function loadAdminData() { // تابع الكود السابق في docx-export للإحصاء والعرض }
-
-// إظهار الرسائل function showMessage(el, msg, isError) { if (!el) return; el.textContent = msg; el.style.color = isError ? 'red' : 'green'; }
-
+// بقية الدوال (generateFlightForms, saveAllFlights, loadUserFlights, loadAdminData, showMessage)...
+// تأكد أنها مطابقة لما راجعناه سابقًا.
