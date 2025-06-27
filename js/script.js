@@ -1,12 +1,14 @@
-// js/script.js
+// ✅ js/script.js (مُحدث)
 
-import { auth, db } from "./firebase-init.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import {
+  getAuth,
   signInWithEmailAndPassword,
   onAuthStateChanged,
   signOut
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 import {
+  getFirestore,
   collection,
   doc,
   setDoc,
@@ -18,103 +20,53 @@ import {
   exportAdminDataToDocx
 } from "./docx-export.js";
 
+const firebaseConfig = {
+  apiKey: "AIzaSyAIz4dQIZS41PcfL3qXOhc-ybouBZWMjuc",
+  authDomain: "najfe2025.firebaseapp.com",
+  projectId: "najfe2025",
+  storageBucket: "najfe2025.appspot.com",
+  messagingSenderId: "113306479969",
+  appId: "1:113306479969:web:27a72a1c3da7918a18e920"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 const ADMIN_EMAIL = "ahmedaltalqani@gmail.com";
 
-// عناصر DOM
-let loginForm, emailInput, passwordInput, loginMessage;
-let logoutBtn, userEmailSpan;
-let welcomeMessage, flightFormsContainer, saveAllFlightsBtn, messageContainer, userPastFlightsTableBody, currentMonthNameSpan;
-let filterMonthInput, filterUserSelect, applyFiltersBtn, exportAdminStatsBtn, exportAdminAllFlightsBtn;
-
 document.addEventListener("DOMContentLoaded", () => {
-  // مشتركة
-  logoutBtn = document.getElementById("logoutBtn");
-  userEmailSpan = document.getElementById("userEmail");
-  if (logoutBtn) logoutBtn.addEventListener("click", handleLogout);
+  const loginForm = document.getElementById("loginForm");
+  const emailInput = document.getElementById("email");
+  const passwordInput = document.getElementById("password");
+  const loginMessage = document.getElementById("loginMessage");
 
-  // صفحة الدخول
-  if (document.getElementById("loginView")) {
-    loginForm = document.getElementById("loginForm");
-    emailInput = document.getElementById("email");
-    passwordInput = document.getElementById("password");
-    loginMessage = document.getElementById("loginMessage");
-    if (loginForm) loginForm.addEventListener("submit", handleLogin);
+  if (loginForm) {
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      try {
+        await signInWithEmailAndPassword(
+          auth,
+          emailInput.value.trim(),
+          passwordInput.value.trim()
+        );
+      } catch (err) {
+        loginMessage.textContent = "خطأ في البريد أو كلمة المرور.";
+        loginMessage.style.color = "red";
+      }
+    });
   }
 
-  // صفحة المستخدم
-  if (document.getElementById("flightsView")) {
-    welcomeMessage = document.getElementById("welcomeMessage");
-    flightFormsContainer = document.getElementById("flightFormsContainer");
-    saveAllFlightsBtn = document.getElementById("saveAllFlightsBtn");
-    messageContainer = document.getElementById("messageContainer");
-    userPastFlightsTableBody = document.querySelector("#userPastFlightsTable tbody");
-    currentMonthNameSpan = document.getElementById("currentMonthName");
-    if (saveAllFlightsBtn) saveAllFlightsBtn.addEventListener("click", saveAllFlights);
-    generateFlightForms(4);
-    const today = new Date();
-    currentMonthNameSpan.textContent = today.toLocaleString("ar-IQ", { month: "long" });
-  }
-
-  // صفحة المسؤول
-  if (document.getElementById("adminView")) {
-    filterMonthInput = document.getElementById("filterMonth");
-    filterUserSelect = document.getElementById("filterUser");
-    applyFiltersBtn = document.getElementById("applyFiltersBtn");
-    exportAdminStatsBtn = document.getElementById("exportAdminStatsToWordBtn");
-    exportAdminAllFlightsBtn = document.getElementById("exportAdminAllFlightsToWordBtn");
-    if (applyFiltersBtn) applyFiltersBtn.addEventListener("click", loadAdminData);
-    if (exportAdminStatsBtn) exportAdminStatsBtn.addEventListener("click", () =>
-      exportAdminDataToDocx('stats', {}, filterMonthInput.value, filterUserSelect.value)
-    );
-    if (exportAdminAllFlightsBtn) exportAdminAllFlightsBtn.addEventListener("click", () =>
-      exportAdminDataToDocx('allFlights', {}, filterMonthInput.value, filterUserSelect.value)
-    );
-    const today = new Date();
-    filterMonthInput.value = `${today.getFullYear()}-${(today.getMonth()+1).toString().padStart(2,'0')}`;
-  }
-
-  // مراقبة حالة المصادقة
-  onAuthStateChanged(auth, user => {
+  onAuthStateChanged(auth, (user) => {
     if (user) {
-      userEmailSpan && (userEmailSpan.textContent = user.email);
-      logoutBtn && (logoutBtn.style.display = "inline-block");
       if (user.email === ADMIN_EMAIL) {
-        if (!window.location.pathname.includes("admin.html")) {
-          window.location.href = "./admin.html";
-        } else {
-          loadAdminData();
+        if (!window.location.href.includes("admin.html")) {
+          window.location.href = "admin.html";
         }
       } else {
-        if (!window.location.pathname.includes("flights.html")) {
-          window.location.href = "./flights.html";
-        } else {
-          welcomeMessage && (welcomeMessage.textContent = `مرحباً بك، ${user.email}`);
-          loadUserFlights(user.uid);
+        if (!window.location.href.includes("flights.html")) {
+          window.location.href = "flights.html";
         }
       }
-    } else {
-      if (!window.location.pathname.includes("index.html")) {
-        window.location.href = "./index.html";
-      }
-      logoutBtn && (logoutBtn.style.display = "none");
     }
   });
 });
-
-// تسجيل الدخول
-async function handleLogin(e) {
-  e.preventDefault();
-  try {
-    await signInWithEmailAndPassword(auth, emailInput.value.trim(), passwordInput.value.trim());
-  } catch (err) {
-    showMessage(loginMessage, "خطأ في البريد أو كلمة المرور.", true);
-  }
-}
-
-// تسجيل الخروج
-function handleLogout() {
-  signOut(auth);
-}
-
-// بقية الدوال (generateFlightForms, saveAllFlights, loadUserFlights, loadAdminData, showMessage)...
-// تأكد أنها مطابقة لما راجعناه سابقًا.
